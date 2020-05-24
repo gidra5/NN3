@@ -1,10 +1,13 @@
 SHELL = /bin/bash
 
-all: clean
-	@echo 'Building...'
-	@tsc -t 'ESNEXT' --strictFunctionTypes --noImplicitReturns --outDir ./build ./src.ts
-	@echo 'Executing...'
-	@node ./build/src.js
+all: clean build test
 
 clean:
 	@rm -r ./build || true
+
+build:
+	@echo 'Building...'
+	@tsc -t 'ESNEXT' --strictFunctionTypes --noImplicitReturns --outDir ./build ./src/src.ts
+
+test:
+	node ./tests/*
