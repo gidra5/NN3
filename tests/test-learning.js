@@ -49,18 +49,3 @@ if (Math.abs(nn.feedforward([input]) - testFunc(input)) > 0.0001) {
   console.log(startingB);
   return;
 }
-
-//after learning weight and bias should match parameters a and b
-//and outputs will match
-
-input = Math.random() * 11;
-if (nn.layers[1].weights[0][0] === a && nn.layers[1].biases[0] === b &&
-    Math.abs(nn.feedforward([input]) - testFunc(input)) < 0.0001) {
-  console.log("Passed");
-} else {
-  console.log(`In: ${input}`);
-  console.log(`Out: ${nn.feedforward([input])[0]} !== ${testFunc(input)}\n`);
-  console.log("Failed test");
-  console.log(`Learned: a = ${nn.layers[1].weights[0][0]}, b = ${nn.layers[1].biases[0]}`);
-  console.log(`Actual: a = ${a}, b = ${b}`);
-}
