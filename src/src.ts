@@ -5,14 +5,15 @@ class Layer {
   weights: number[][] = []; //weights to the prev layer
   biases: number[] = [];
   values: number[] = []; //values of neurons of this layer
-  next: Layer;
+  step: number = 1;
   _prev: Layer;
+  next: Layer;
 
   constructor(size: number) {
     this.size = size;
 
     for (let i = 0; i < this.size; ++i)
-      this.values[i] = (2 * Math.random() - 1) * randomRange;
+      this.values[i] = 0;
     for (let i = 0; i < this.size; ++i)
       this.biases[i] = (2 * Math.random() - 1) * randomRange;
     for (let i = 0; i < this.size; ++i) this.weights[i] = [];
@@ -35,9 +36,8 @@ class Layer {
 
     for (let i = 0; i < this.size; ++i) {
       this.weights[i].length = this._prev.size;
-      this.weights[i] = this.weights[i].map(
-        () => (2 * Math.random() - 1) * randomRange
-      );
+      for (let j = 0; j < this.weights[i].length; ++j)
+        this.weights[i][j] = (2 * Math.random() - 1) * randomRange;
     }
   }
 
@@ -52,19 +52,17 @@ class Layer {
 
   computeForward() {
     //if there is no prev just move forward
-    if (!this._prev) this.next.computeForward();
+    if (this._prev) {
+      let sum: number;
 
-    let sum: number;
-
-    for (let i = 0; i < this.size; ++i) {
-      sum = 0;
-      for (let j = 0; j < this._prev.size; ++j)
-        sum += this.weights[i][j] * this._prev.values[j];
-      this.values[i] = this.activation(sum);
-    }
-
-    //move forward only if next exists
-    if (this.next) this.next.computeForward();
+      for (let i = 0; i < this.size; ++i) {
+        sum = this.biases[i];
+        for (let j = 0; j < this._prev.size; ++j)
+          sum += this.weights[i][j] * this._prev.values[j];
+        this.values[i] = this.activation(sum);
+      }
+      //move forward only if next exists
+    } else if (this.next) this.next.computeForward();
   }
   computeBackward(diff: number[]) {
     //if no prev then is's input layer
@@ -76,18 +74,18 @@ class Layer {
 
     let sum: number;
     for (let i = 0; i < this.size; ++i) {
-      sum = 0;
+      sum = this.biases[i];
       for (let j = 0; j < this._prev.size; ++j)
         sum += this.weights[i][j] * this._prev.values[j];
 
       biasesDiff[i] =
         this.cost(this.values[i] + diff[i], this.values[i]) *
         this.actDerivative(sum);
-      this.biases[i] += biasesDiff[i];
+      this.biases[i] += this.step * biasesDiff[i];
 
       for (let j = 0; j < this._prev.size; ++j) {
-        this.weights[i][j] += this._prev.values[j] * biasesDiff[i];
-        prevDiff[i] += this.weights[i][j] * biasesDiff[i];
+        this.weights[i][j] += this.step * this._prev.values[j] * biasesDiff[i];
+        prevDiff[i] += this.step * this.weights[i][j] * biasesDiff[i];
       }
     }
 
@@ -168,11 +166,14 @@ class NNetwork {
   }
   set actDerivative(f: (x: number) => number) {
     //activation func for neurons
-    for (const l of this.layers) l.activation = f;
+    for (const l of this.layers) l.actDerivative = f;
   }
   set cost(f: (x: number, y: number) => number) {
     //some cost function that will vanish at x = y
     for (const l of this.layers) l.cost = f;
+  }
+  set step(val: number) {
+    for (const l of this.layers) l.step = val;
   }
 
   get layout() {
@@ -217,7 +218,7 @@ class NNetwork {
       throw "forwardprop: invalid input";
 
     this.layers[0].values = input;
-    this.layers[1].computeForward();
+    this.layers[0].computeForward();
 
     //copying so that references don't leak
     return Array.from(this.layers[this.layers.length - 1].values);
