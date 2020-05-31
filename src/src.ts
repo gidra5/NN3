@@ -1,10 +1,28 @@
 const fs = require("fs");
 const randomRange = 50;
 
+class Neuron {
+  prevLayer: Layer;
+  weights: number[];
+  value: number;
+  bias: number;
+  activation: (x: number) => number;
+
+  calcValue() {
+    if (!this.prevLayer) throw "prevLayer is undefined";
+
+    let sum = this.bias;
+    for (let i = 0; i < this.prevLayer.size; ++i)
+      sum += this.prevLayer.neurons[i].value * this.weights[i];
+    this.value =  this.activation(sum);
+  }
+}
+
 class Layer {
   weights: number[][] = []; //weights to the prev layer
   biases: number[] = [];
   values: number[] = []; //values of neurons of this layer
+  neurons: Neuron[];
   step: number = 1;
   _prev: Layer;
   next: Layer;
@@ -22,6 +40,7 @@ class Layer {
   get size() {
     //amount of neurons
     return this.values.length;
+    return this.neurons.length;
   }
 
   set size(val: number) {
@@ -141,7 +160,7 @@ class Layer {
 class NNetwork {
   layers: Layer[] = [];
 
-  constructor(layout: number[]) {
+  constructor(...layout: number[]) {
     //layout is set of numbers of neurons per specific layer
     this.layers.length = layout.length;
 
@@ -165,7 +184,7 @@ class NNetwork {
     for (const l of this.layers) l.activation = f;
   }
   set actDerivative(f: (x: number) => number) {
-    //activation func for neurons
+    //activation func derivative so it can be faster evaluated
     for (const l of this.layers) l.actDerivative = f;
   }
   set cost(f: (x: number, y: number) => number) {
@@ -213,7 +232,7 @@ class NNetwork {
     });
   }
 
-  feedforward(input: number[]): number[] {
+  feedforward(...input: number[]): number[] {
     if (input.length !== this.layers[0].size)
       throw "forwardprop: invalid input";
 
@@ -223,7 +242,7 @@ class NNetwork {
     //copying so that references don't leak
     return Array.from(this.layers[this.layers.length - 1].values);
   }
-  backprop(output: number[]) {
+  backprop(...output: number[]) {
     //for backpropagation technique
     if (output.length !== this.layers[this.layers.length - 1].size)
       throw "backprop: invalid input";
@@ -233,6 +252,14 @@ class NNetwork {
     );
     this.layers[this.layers.length - 1].computeBackward(diff);
   }
+
+  //train on input-output pairs
+  train(...examples: [number[], number[]][]) {
+    for(const example of examples) {
+      this.feedforward(...example[0]);
+      this.backprop(...example[1]);
+    }
+  }
 }
 
-module.exports = NNetwork;
+module.exports = { NNetwork, randomRange };
