@@ -2,157 +2,166 @@ const fs = require("fs");
 const randomRange = 50;
 
 class Neuron {
-  prevLayer: Layer;
-  weights: number[];
-  value: number;
+  value: number = 0;
+  sum: number = 0;
+  step: number = 1;
+  weights: number[] = [];
   bias: number;
-  activation: (x: number) => number;
+  prevLayer: Layer;
 
-  calcValue() {
+  //default act func is sigmoid
+  activation = (x: number) => 1 / (1 + Math.exp(-x));
+  actDerivative = (x: number) => Math.exp(-x) / ((1 + Math.exp(-x)) * (1 + Math.exp(-x)));
+
+  //default cost func is difference;
+  cost = (x: number, y: number) => x - y;
+
+  constructor(prev?: Layer) {
+    if (this.prevLayer) {
+      this.prevLayer = prev;
+
+      this.weights.length = prev.size;
+      for (let i = 0; i < prev.size; ++i)
+        this.weights[i] = (2 * Math.random() - 1) * randomRange;
+    }
+
+    this.bias = (2 * Math.random() - 1) * randomRange;
+  }
+  static copy(copyFrom: Neuron): Neuron {
+    const c = new Neuron();
+
+    c.step = copyFrom.step;
+    c.weights = Array.from(copyFrom.weights);
+    c.bias = copyFrom.bias;
+    c.activation = copyFrom.activation;
+    c.actDerivative = copyFrom.actDerivative;
+    c.cost = copyFrom.cost;
+
+    return c;
+  }
+
+  setValues() {
     if (!this.prevLayer) throw "prevLayer is undefined";
 
-    let sum = this.bias;
+    this.sum = this.bias;
     for (let i = 0; i < this.prevLayer.size; ++i)
-      sum += this.prevLayer.neurons[i].value * this.weights[i];
-    this.value =  this.activation(sum);
+      this.sum += this.prevLayer.neurons[i].value * this.weights[i];
+    this.value =  this.activation(this.sum);
+  }
+
+  change(diff: number): number[] {
+    const biasDiff =
+      this.cost(this.value + diff, this.value) * this.actDerivative(this.sum);
+    this.bias += this.step * biasDiff;
+    const prevDiff = [];
+
+    for (let i = 0; i < this.prevLayer.size; ++i) {
+      prevDiff.push(this.weights[i] * biasDiff);
+      this.weights[i] += this.step * this.prevLayer.neurons[i].value * biasDiff;
+    }
+
+    return prevDiff;
   }
 }
 
 class Layer {
-  weights: number[][] = []; //weights to the prev layer
-  biases: number[] = [];
-  values: number[] = []; //values of neurons of this layer
-  neurons: Neuron[];
+  neurons: Neuron[] = [];
   step: number = 1;
-  _prev: Layer;
   next: Layer;
 
-  constructor(size: number) {
+  constructor(size: number, prev?: Layer) {
     this.size = size;
 
-    for (let i = 0; i < this.size; ++i)
-      this.values[i] = 0;
-    for (let i = 0; i < this.size; ++i)
-      this.biases[i] = (2 * Math.random() - 1) * randomRange;
-    for (let i = 0; i < this.size; ++i) this.weights[i] = [];
+    this.neurons.fill(new Neuron(prev));
   }
 
-  get size() {
-    //amount of neurons
-    return this.values.length;
-    return this.neurons.length;
+  set values(vals: number[]) {
+    if (vals.length !== this.neurons.length) throw "set values invalid length";
+
+    for (let i = 0; i < this.size; ++i)
+      this.neurons[i].value = vals[i];
+  }
+  get values() {
+    return this.neurons.map(v => v.value);
   }
 
   set size(val: number) {
-    this.values.length = val;
-    this.biases.length = val;
-    this.weights.length = val;
+    if (val < 0) throw "negative size";
+    this.neurons.length = val;
+  }
+  get size() {
+    return this.neurons.length;
   }
 
   set prev(val: Layer) {
     //sets new ref to prev layer and resets weights
-    this._prev = val;
-
-    for (let i = 0; i < this.size; ++i) {
-      this.weights[i].length = this._prev.size;
-      for (let j = 0; j < this.weights[i].length; ++j)
-        this.weights[i][j] = (2 * Math.random() - 1) * randomRange;
-    }
+    for (const n of this.neurons) n.prevLayer = val;
+  }
+  get prev() {
+    return this.neurons[0].prevLayer;
   }
 
   //activation func for neurons
-  activation: (x: number) => number;
-  //derivative of activation func for backprop
-  //default is numerical derivative, that should be replaced by exact func
-  actDerivative = (x: number) =>
-    (this.activation(x + 0.0001) - this.activation(x - 0.0001)) / 0.0002;
-  //some cost function that will vanish at x = y
-  cost: (x: number, y: number) => number;
+  set activation(f: (x: number) => number) {
+    //activation func for neurons
+    for (const n of this.neurons) n.activation = f;
+  }
+  set actDerivative(f: (x: number) => number) {
+    //activation func derivative so it can be faster evaluated
+    for (const n of this.neurons) n.actDerivative = f;
+  }
+  set cost(f: (x: number, y: number) => number) {
+    //some cost function that will vanish at x = y
+    for (const n of this.neurons) n.cost = f;
+  }
 
   computeForward() {
     //if there is no prev just move forward
-    if (this._prev) {
-      let sum: number;
-
+    if (this.prev) {
       for (let i = 0; i < this.size; ++i) {
-        sum = this.biases[i];
-        for (let j = 0; j < this._prev.size; ++j)
-          sum += this.weights[i][j] * this._prev.values[j];
-        this.values[i] = this.activation(sum);
+        this.neurons[i].setValues();
       }
       //move forward only if next exists
     } else if (this.next) this.next.computeForward();
   }
+
   computeBackward(diff: number[]) {
     //if no prev then is's input layer
     //and nothing should be done
-    if (!this._prev) return;
+    if (!this.prev) return;
 
-    const biasesDiff = [];
-    const prevDiff = new Array(this._prev.size).fill(0);
+    let totalPrevDiff = new Array(this.prev.size).fill(0);
 
-    let sum: number;
     for (let i = 0; i < this.size; ++i) {
-      sum = this.biases[i];
-      for (let j = 0; j < this._prev.size; ++j)
-        sum += this.weights[i][j] * this._prev.values[j];
+      const prevDiff = this.neurons[i].change(diff[i]);
 
-      biasesDiff[i] =
-        this.cost(this.values[i] + diff[i], this.values[i]) *
-        this.actDerivative(sum);
-      this.biases[i] += this.step * biasesDiff[i];
-
-      for (let j = 0; j < this._prev.size; ++j) {
-        this.weights[i][j] += this.step * this._prev.values[j] * biasesDiff[i];
-        prevDiff[i] += this.step * this.weights[i][j] * biasesDiff[i];
-      }
+      totalPrevDiff = totalPrevDiff.map((v, i) => v + prevDiff[i]);
     }
 
-    this._prev.computeBackward(prevDiff);
+    this.prev.computeBackward(totalPrevDiff);
   }
 
   removeNeuron(index: number) {
-    this.weights.splice(index, 1);
-    this.values.splice(index, 1);
-    this.biases.splice(index, 1);
+    this.neurons.splice(index, 1);
 
-    if (this.next) for (const w of this.next.weights) w.splice(index, 1);
+    if (this.next) for (const n of this.next.neurons) n.weights.splice(index, 1);
   }
   addNeuron() {
-    this.biases.push((2 * Math.random() - 1) * randomRange);
+    this.neurons.push(new Neuron(this.prev));
 
-    if (this._prev)
-      this.weights.push(
-        new Array(this._prev.size).map(
-          () => (2 * Math.random() - 1) * randomRange
-        )
-      );
-
-    this.values.push(0);
-
-    if (this.next)
-      for (const w of this.next.weights)
-        w.push((2 * Math.random() - 1) * randomRange);
+    if (this.next) for (const n of this.next.neurons)
+      n.weights.push((2 * Math.random() - 1) * randomRange);
   }
 
   static copy(copyFrom: Layer): Layer {
     let c: Layer;
     c.size = copyFrom.size;
 
-    //copying values of weights and biases
     for (let i = 0; i < c.size; ++i) {
-      c.weights[i].length = copyFrom.weights[i].length;
-      for (let j = 0; j < c.size; ++j)
-        c.weights[i][j] = copyFrom.weights[i][j];
-
-      c.biases[i] = copyFrom.biases[i];
+      c.neurons[i] = Neuron.copy(copyFrom.neurons[i]);
     }
 
-    //and copying functions
-    c.activation = copyFrom.activation;
-    c.cost = copyFrom.cost;
-
-    //but don't copy prev/next layer
+    //no copying prev/next layer
     return c;
   }
 }
@@ -166,29 +175,18 @@ class NNetwork {
 
     this.layers[0] = new Layer(layout[0]);
     for (let i = 1; i < this.layers.length; ++i) {
-      this.layers[i] = new Layer(layout[i]);
+      this.layers[i] = new Layer(layout[i], this.layers[i - 1]);
       this.layers[i - 1].next = this.layers[i];
-      this.layers[i].prev = this.layers[i - 1];
     }
-
-    //default act func is sigmoid
-    this.activation = x => 1 / (1 + Math.exp(-x));
-    this.actDerivative = x => Math.exp(-x) / ((1 + Math.exp(-x)) * (1 + Math.exp(-x)));
-
-    //default cost func is difference;
-    this.cost = (x, y) => x - y;
   }
 
   set activation(f: (x: number) => number) {
-    //activation func for neurons
     for (const l of this.layers) l.activation = f;
   }
   set actDerivative(f: (x: number) => number) {
-    //activation func derivative so it can be faster evaluated
     for (const l of this.layers) l.actDerivative = f;
   }
   set cost(f: (x: number, y: number) => number) {
-    //some cost function that will vanish at x = y
     for (const l of this.layers) l.cost = f;
   }
   set step(val: number) {
@@ -196,13 +194,11 @@ class NNetwork {
   }
 
   get layout() {
-    const l = [];
-    this.layers.forEach(layer => l.push(layer.size));
-    return l;
+    return this.layers.map(v => v.size);
   }
 
   static copy(copyFrom: NNetwork): NNetwork {
-    const c: NNetwork = new NNetwork(copyFrom.layout);
+    const c: NNetwork = new NNetwork(...copyFrom.layout);
 
     for (let i = 0; i < c.layers.length; ++i) {
       c.layers[i] = Layer.copy(copyFrom.layers[i]);
@@ -233,14 +229,11 @@ class NNetwork {
   }
 
   feedforward(...input: number[]): number[] {
-    if (input.length !== this.layers[0].size)
-      throw "forwardprop: invalid input";
-
     this.layers[0].values = input;
     this.layers[0].computeForward();
 
     //copying so that references don't leak
-    return Array.from(this.layers[this.layers.length - 1].values);
+    return this.layers[this.layers.length - 1].values;
   }
   backprop(...output: number[]) {
     //for backpropagation technique
