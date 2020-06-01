@@ -24,6 +24,8 @@ After importing lib as NN you can:
         
     Note that dimensions of input and output should match first and last layer's size respectively
 
+- dynamically change NN's structure with `addNeuron()`/`addLayer()` and `removeNeuron()`/`removeLayer()` functions
+
 - import/export NN from file with `saveTo()` and `loadFrom()`
 
 # Tests
