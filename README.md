@@ -11,17 +11,18 @@ After importing lib as NN you can:
 
 - create NN with specific layout like this:
 
-        const nn = new NN([1, 1]); //makes NN with 2 layers, each with 1 neuron
+        const nn = new NN([1, 2, 1]); //makes NN with 3 layers with 1, 2 and 1 neuron respectively
 
 - get output of NN via `feedforward()`:
 
         const out = nn.feedforward(data);
 
-    Note that input data should match first layer's number of neurons and output will match last layer's number of neurons, or exception will be thrown
-- learn input-output pair with `backprop()`:
+    Note that input data should match first layer's size or exception will be thrown
+- learn input-output pair with `train()`:
 
-        nn.feedforward(input); //will set apropriate values for neurons
-        nn.backprop(output);   //learn with backpropagation
+        nn.train([input, output]); 
+        
+    Note that dimensions of input and output should match first and last layer's size respectively
 
 - import/export NN from file with `saveTo()` and `loadFrom()`
 
