@@ -1,4 +1,5 @@
 "use strict";
+console.log("\nLearning test");
 
 // const args = process.argv.splice(0, 2);
 const NeuralNetwork = require("../build/src").NNetwork;
@@ -8,12 +9,12 @@ const a = 5;
 const b = 10;
 const testFunc = x => a * x + b;
 
-const nn = new NeuralNetwork(1, 1);
+const nn = new NeuralNetwork(1, 2, 1);
 
 nn.activation = x => x;
 nn.actDerivative = () => 1;
 
-const startingW = Array.from(nn.layers[1].neurons.map(v => v.weights));
+const startingW = Array.from(nn.layers[1].neurons.map(v => Array.from(v.weights)));
 const startingB = Array.from(nn.layers[1].neurons.map(v => v.bias));
 
 //learning test
@@ -35,4 +36,4 @@ console.log("\nNN starting params:");
 console.log(startingW);
 console.log(startingB);
 
-console.log("\nLearning test finished successfully");
+console.log("\nLearning test failed successfully");

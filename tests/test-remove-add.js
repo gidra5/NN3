@@ -1,9 +1,7 @@
 "use strict";
+console.log("\nRemove/add neuron test");
 
 // const args = process.argv.splice(0, 2);
 const NeuralNetwork = require("../build/src").NNetwork;
 
-const nn = new NeuralNetwork(1, 2, 1);
-
-nn.feedforward([5]);
-nn.backprop([67]);
+console.log("Remove/add neuron test finished");

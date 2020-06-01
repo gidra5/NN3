@@ -17,7 +17,7 @@ class Neuron {
   cost = (x: number, y: number) => x - y;
 
   constructor(prev?: Layer) {
-    if (this.prevLayer) {
+    if (prev) {
       this.prevLayer = prev;
 
       this.weights.length = prev.size;
@@ -66,17 +66,18 @@ class Neuron {
 
 class Layer {
   neurons: Neuron[] = [];
-  step: number = 1;
   next: Layer;
 
   constructor(size: number, prev?: Layer) {
     this.size = size;
 
-    this.neurons.fill(new Neuron(prev));
+    for (let i = 0; i < this.size; ++i)
+      this.neurons[i] = new Neuron(prev);
   }
 
   set values(vals: number[]) {
-    if (vals.length !== this.neurons.length) throw "set values invalid length";
+    if (vals.length !== this.neurons.length)
+      throw "Setting values of invalid length";
 
     for (let i = 0; i < this.size; ++i)
       this.neurons[i].value = vals[i];
@@ -114,6 +115,9 @@ class Layer {
     //some cost function that will vanish at x = y
     for (const n of this.neurons) n.cost = f;
   }
+  set step(val: number) {
+    for (const n of this.neurons) n.step = val;
+  }
 
   computeForward() {
     //if there is no prev just move forward
@@ -130,13 +134,10 @@ class Layer {
     //and nothing should be done
     if (!this.prev) return;
 
-    let totalPrevDiff = new Array(this.prev.size).fill(0);
+    const totalPrevDiff = new Array(this.prev.size).fill(0);
 
-    for (let i = 0; i < this.size; ++i) {
-      const prevDiff = this.neurons[i].change(diff[i]);
-
-      totalPrevDiff = totalPrevDiff.map((v, i) => v + prevDiff[i]);
-    }
+    for (let i = 0; i < this.size; ++i)
+      this.neurons[i].change(diff[i]).forEach((v, i) => totalPrevDiff[i] += v);
 
     this.prev.computeBackward(totalPrevDiff);
   }
@@ -211,19 +212,22 @@ class NNetwork {
   static loadFrom(file: string): NNetwork {
     //create NN based on file
     let loaded: NNetwork;
-    fs.readFile(file, (err, data) => {
+    fs.readFileSync(file, (err, data) => {
       if (err) throw err;
 
-      loaded = JSON.parse(data);
+      //todo deserialization
+      loaded = data;
     });
 
     return loaded;
   }
   saveTo(file: string) {
     //load NN to a file lazy way
-    const data = JSON.stringify(this);
+    const data = "";
 
-    fs.writeFile(file, data, err => {
+    //todo deserialization
+
+    fs.appendFileSync(file, data, err => {
       if (err) throw err;
     });
   }

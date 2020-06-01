@@ -13,9 +13,10 @@
     "typescript": "^3.9.3"
   },
   "scripts": {
-    "test": "echo 'Testing...' && npx eslint ./ && node ./tests/*",
+    "test": "echo 'Testing...' && npx eslint ./ && node ./tests/test-learning.js && node ./tests/test-computation.js && node ./tests/test-save-load.js && node ./tests/test-remove-add.js",
     "clear": "rm -r ./build || true",
     "build": "echo 'Building...' && npx tsc -t 'ESNEXT' --strictFunctionTypes --noImplicitReturns --outDir ./build ./src/src.ts || true",
+    "install": "node in.js",
     "postinstall": "npm run build"
   },
   "repository": {
