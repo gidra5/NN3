@@ -15,7 +15,7 @@ After importing lib as NN you can:
 
 - create NN with specific layout like this:
 ```typescript
-        const nn = new NeuralNetwork([1, 2, 1]); //makes NN with 3 layers with 1, 2 and 1 neuron respectively
+        const nn = new NeuralNetwork(1, 2, 1); //makes NN with 3 layers with 1, 2 and 1 neuron respectively
 ```
 - get output of NN via `feedforward()`:
 ```typescript
