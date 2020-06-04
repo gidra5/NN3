@@ -14,21 +14,22 @@ Just another NN-learning library for personal usage and education
 After importing lib as NN you can:
 
 - create NN with specific layout like this:
-
-        const nn = new NN([1, 2, 1]); //makes NN with 3 layers with 1, 2 and 1 neuron respectively
-
+```typescript
+        const nn = new NeuralNetwork([1, 2, 1]); //makes NN with 3 layers with 1, 2 and 1 neuron respectively
+```
 - get output of NN via `feedforward()`:
-
+```typescript
         const out = nn.feedforward(data);
+```
+Note that input data should match first layer's size or exception will be thrown
 
-    Note that input data should match first layer's size or exception will be thrown
 - learn dataset with `train()`:
-
+```typescript
         const dataset = [[input1, output1], [input2, output2], [input3, output3],...];
         nn.train(...dataset);
-
-    Note that dimensions of input and output should match first and last layer's size respectively
-
+```
+Note that dimensions of input and output should match first and last layer's size respectively
+    
 - dynamically change NN's structure with `addNeuron()`/`addLayer()` and `removeNeuron()`/`removeLayer()` functions
 
 - import/export NN from file with `saveTo()` and `loadFrom()`
