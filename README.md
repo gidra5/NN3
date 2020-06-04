@@ -22,9 +22,10 @@ After importing lib as NN you can:
         const out = nn.feedforward(data);
 
     Note that input data should match first layer's size or exception will be thrown
-- learn input-output pair with `train()`:
+- learn dataset with `train()`:
 
-        nn.train([input, output]);
+        const dataset = [[input1, output1], [input2, output2], [input3, output3],...];
+        nn.train(...dataset);
 
     Note that dimensions of input and output should match first and last layer's size respectively
 
