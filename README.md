@@ -32,7 +32,7 @@ After importing lib as NN you can:
 
 - import/export NN from file with `saveTo()` and `loadFrom()`
 
-Other available function is described in (`Docs.md`)[https://github.com/gidra5/NN3/blob/master/Docs.md]
+Other available function is described in [`Docs.md`](https://github.com/gidra5/NN3/blob/master/Docs.md)
 
 # Tests
 
@@ -41,5 +41,5 @@ Tests check wheather code works for simplest case of NNs and some features.
 
 # Examples
 
-Examples of usage are available in (`Examples.md`)[https://github.com/gidra5/NN3/blob/master/Examples.md]
+Examples of usage are available in [`Examples.md`](https://github.com/gidra5/NN3/blob/master/Examples.md)  
 You can run sources after building project with `node ./build/*example*`
