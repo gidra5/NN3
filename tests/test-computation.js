@@ -2,7 +2,7 @@
 console.log("\nComputation test");
 
 // const args = process.argv.splice(0, 2);
-const NeuralNetwork = require("../build/src").NNetwork;
+const NeuralNetwork = require("../build/src/src").NNetwork;
 
 const nn = new NeuralNetwork(3, 2, 3);
 
