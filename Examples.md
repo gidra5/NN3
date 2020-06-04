@@ -5,11 +5,13 @@
 First we can define training data, that we will use:
 
     const trainingData = [[[0, 0], [0]], [[0, 1], [1]], [[1, 0], [1]], [[1, 1], [0]]];
+    
+> In general data may be loaded from file, not hardcoded, so be sure to follow this format of nested arrays.
 
 Construct NN specifying its layout (amount of neurons per layer in order).  
-First layer will be input layer, so it should match dimensions of expected input (2 inputs).  
-Last layer will be output layer, so it should match dimensions of expected output (1 inputs).  
-Layout is motivated by this [post](https://medium.com/@jayeshbahire/the-xor-problem-in-neural-networks-50006411840b).  
+> First layer will be input layer, so it should match dimensions of expected input (2 inputs).  
+> Last layer will be output layer, so it should match dimensions of expected output (1 output).  
+> Layout is motivated by this [post](https://medium.com/@jayeshbahire/the-xor-problem-in-neural-networks-50006411840b).  
 
     const nn = new NeuralNetwork(2, 2, 1);
 
