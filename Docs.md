@@ -64,7 +64,7 @@ Basic feedforward neural network implementation
 
 Field | Desription 
 ----- | ---------- 
-`layers: Layer[]` |
+`layers: Layer[]` | layers of this NN
 
 ### Methods
 
