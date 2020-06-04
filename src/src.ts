@@ -96,6 +96,16 @@ class Layer {
     for (let i = 0; i < this.size; ++i)
       this.neurons[i] = new Neuron(prev);
   }
+  static copy(copyFrom: Layer): Layer {
+    const copy: Layer = new Layer(copyFrom.size);
+
+    for (let i = 0; i < copy.size; ++i) {
+      copy.neurons[i] = Neuron.copy(copyFrom.neurons[i]);
+    }
+
+    //no copying prev/next layer
+    return copy;
+  }
 
   set values(vals: number[]) {
     if (vals.length !== this.neurons.length)
@@ -109,7 +119,7 @@ class Layer {
   }
 
   set size(val: number) {
-    if (val < 0) throw new Error("negative size");
+    if (val < 1) throw new Error("Setting invalid size (size < 1)");
     this.neurons.length = val;
   }
   get size() {
@@ -179,17 +189,6 @@ class Layer {
 
     if (this.next) for (const n of this.next.neurons)
       n.weights.push((2 * Math.random() - 1) * randomRange);
-  }
-
-  static copy(copyFrom: Layer): Layer {
-    const copy: Layer = new Layer(copyFrom.size);
-
-    for (let i = 0; i < copy.size; ++i) {
-      copy.neurons[i] = Neuron.copy(copyFrom.neurons[i]);
-    }
-
-    //no copying prev/next layer
-    return copy;
   }
 }
 
