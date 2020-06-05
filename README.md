@@ -39,7 +39,7 @@ Other available function is described in [`Docs.md`](https://github.com/gidra5/N
 # Tests
 
 Tests can be run with `npm test` (after `npm install` was once called) which will lint and run test scripts from `/tests` folder
-Tests check wheather code works for simplest case of NNs and some features.
+Tests check wheather code works for simplest case of NNs and some features. More information about tests is available [`Docs.md`](https://github.com/gidra5/NN3/blob/master/Docs.md)
 
 # Examples
 
