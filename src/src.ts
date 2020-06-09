@@ -11,7 +11,7 @@ class Neuron {
 
   //default act func is sigmoid
   activation = (x: number) => 1 / (1 + Math.exp(-x));
-  actDerivative = (x: number) => (activation(x + 0.0001) - activation(x - 0.0001)) / 0.0002;
+  actDerivative = (x: number) => (this.activation(x + 0.0001) - this.activation(x - 0.0001)) / 0.0002;
 
   //default cost func is difference;
   cost = (x: number, y: number) => x - y;
