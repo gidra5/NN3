@@ -2,117 +2,107 @@ import * as fs from "fs";
 const randomRange = 50;
 
 class Neuron {
-  value: number = 0;
-  sum: number = 0;
   step: number = 1;
-  weights: number[] = [];
+  value: number = 0;
   bias: number;
-  private _prevLayer?: Layer;
 
-  //default act func is sigmoid
+  //weights created through proxy
+  //because its better to populate possible empty elements with random values
+  weights: number[] = new Proxy<number[]>([], {
+    set: (obj, prop, val): boolean => {
+      obj[prop] = val;
+
+      if (prop === "length") {
+        for (let i = 0; i < obj.length; ++i)
+          if (obj[i] === undefined)
+            obj[i] = (2 * Math.random() - 1) * randomRange;
+      }
+
+      return true;
+    },
+  });
+
+  private sum: number = 0;
+
   activation = (x: number) => 1 / (1 + Math.exp(-x));
-  actDerivative = (x: number) => (this.activation(x + 0.0001) - this.activation(x - 0.0001)) / 0.0002;
+  actDerivative = (x: number) =>
+    (this.activation(x + 0.0001) - this.activation(x - 0.0001)) / 0.0002;
 
-  //default cost func is difference;
-  cost = (x: number, y: number) => x - y;
-
-  constructor(prev?: Layer) {
-    if (prev)
-      this.prevLayer = prev;
-
+  constructor(prevLayer?: Layer) {
     this.bias = (2 * Math.random() - 1) * randomRange;
+
+    if (prevLayer) this.weights.length = prevLayer.size;
   }
   static copy(copyFrom: Neuron): Neuron {
-    const buffer = new Neuron();
+    const copy = new Neuron();
 
-    buffer.step = copyFrom.step;
-    buffer.weights = Array.from(copyFrom.weights);
-    buffer.bias = copyFrom.bias;
-    buffer.activation = copyFrom.activation;
-    buffer.actDerivative = copyFrom.actDerivative;
-    buffer.cost = copyFrom.cost;
+    copy.step = copyFrom.step;
+    copy.weights = Array.from(copyFrom.weights);
+    copy.bias = copyFrom.bias;
+    copy.activation = copyFrom.activation;
+    copy.actDerivative = copyFrom.actDerivative;
 
-    return buffer;
+    return copy;
   }
 
-  set prevLayer(prev: Layer) {
-    this._prevLayer = prev;
-
-    this.weights.length = prev.size;
-    for (let i = 0; i < prev.size; ++i)
-      if(this.weights[i] === undefined)
-        this.weights[i] = (2 * Math.random() - 1) * randomRange;
-  }
-  get prevLayer() {
-    return this._prevLayer!;
-  }
-
-  setValues() {
-    if (!this.prevLayer) throw new Error("prevLayer is undefined");
+  setValues(prevLayer: Layer) {
+    if (prevLayer.size !== this.weights.length)
+      throw new Error("prevLayer's size isn't matching weights' length");
 
     this.sum = this.bias;
-    for (let i = 0; i < this.prevLayer.size; ++i)
-      this.sum += this.prevLayer.neurons[i].value * this.weights[i];
-    this.value =  this.activation(this.sum);
+    for (let i = 0; i < prevLayer.size; ++i)
+      this.sum += prevLayer.neurons[i].value * this.weights[i];
+    this.value = this.activation(this.sum);
   }
 
-  //changes neuron's parameters according to some expected difference
-  change(diff: number) {
-    //calculate diff as gradient
-    const biasDiff =
-      this.cost(this.value + diff, this.value) * this.actDerivative(this.sum);
+  change(change: number, prevValues: number[]) {
+    if (prevValues.length !== this.weights.length)
+      throw new Error("prevLayer's size isn't matching weights' length");
 
-    //if bias happens to be NaN do nothing (as if change is 0)
-    if (isNaN(biasDiff)) return;
+    const biasChange = this.step * change * this.actDerivative(this.sum);
 
-    this.bias += this.step * biasDiff;
-    for (let i = 0; i < this.prevLayer.size; ++i)
-      this.weights[i] += this.step * this.prevLayer.neurons[i].value * biasDiff;
+    //if biasChange happens to be NaN do nothing (as if change is 0)
+    if (isNaN(biasChange)) return;
+
+    this.bias += biasChange;
+
+    for (let i = 0; i < this.weights.length; ++i)
+      this.weights[i] += prevValues[i] * biasChange;
   }
 
-  //calculates changes to prevLayer's neurons based on its changes
-  getPrevDiff(diff: number): number[] {
-    let biasDiff =
-      this.cost(this.value + diff, this.value) * this.actDerivative(this.sum);
+  getPrevChange(change: number): number[] {
+    let biasChange = change * this.actDerivative(this.sum);
 
-    if (isNaN(biasDiff)) biasDiff = 0;
-    const prevDiff = [];
+    if (isNaN(biasChange)) biasChange = 0;
 
-    for (let i = 0; i < this.prevLayer.size; ++i)
-      prevDiff.push(this.weights[i] * biasDiff);
-
-    return prevDiff;
+    return this.weights.map(v => v * biasChange);
   }
 }
 
 class Layer {
   neurons: Neuron[] = [];
+  prev?: Layer;
   next?: Layer;
 
   constructor(size: number, prev?: Layer) {
-    if (size === 0) throw new Error("Zero size layer is useless");
+    if (size < 1) throw new Error("Size should be positive integer");
+    this.prev = prev;
     this.size = size;
-
-    for (let i = 0; i < this.size; ++i)
-      this.neurons[i] = new Neuron(prev);
   }
   static copy(copyFrom: Layer): Layer {
     const copy: Layer = new Layer(copyFrom.size);
 
-    for (let i = 0; i < copy.size; ++i) {
+    for (let i = 0; i < copy.size; ++i)
       copy.neurons[i] = Neuron.copy(copyFrom.neurons[i]);
-    }
 
-    //no copying prev/next layer
     return copy;
   }
 
   set values(vals: number[]) {
-    if (vals.length !== this.neurons.length)
+    if (vals.length !== this.size)
       throw new Error("Setting values of invalid length");
 
-    for (let i = 0; i < this.size; ++i)
-      this.neurons[i].value = vals[i];
+    for (let i = 0; i < this.size; ++i) this.neurons[i].value = vals[i];
   }
   get values() {
     return this.neurons.map(v => v.value);
@@ -121,74 +111,54 @@ class Layer {
   set size(val: number) {
     if (val < 1) throw new Error("Setting invalid size (size < 1)");
     this.neurons.length = val;
+    for (let i = 0; i < this.size; ++i) this.neurons[i] = new Neuron(this.prev);
   }
   get size() {
     return this.neurons.length;
   }
 
-  set prev(val: Layer) {
-    //sets new ref to prev layer and resets weights
-    for (const n of this.neurons) n.prevLayer = val;
-  }
-  get prev() {
-    return this.neurons[0].prevLayer;
-  }
-
-  //activation func for neurons
   set activation(func: (x: number) => number) {
-    //activation func for neurons
-    for (const n of this.neurons) n.activation = func;
+    this.neurons.forEach(n => n.activation = func);
   }
   set actDerivative(func: (x: number) => number) {
-    //activation func derivative so it can be faster evaluated
-    for (const n of this.neurons) n.actDerivative = func;
-  }
-  set cost(func: (x: number, y: number) => number) {
-    //some cost function that will vanish at x = y
-    for (const n of this.neurons) n.cost = func;
+    this.neurons.forEach(n => n.actDerivative = func);
   }
   set step(val: number) {
-    for (const n of this.neurons) n.step = val;
+    this.neurons.forEach(n => n.step = val);
   }
 
   computeForward() {
-    //if there is no prev just move forward
-    if (this.prev) {
-      for (let i = 0; i < this.size; ++i) {
-        this.neurons[i].setValues();
-      }
-      //move forward only if next exists
-    } else if (this.next) this.next.computeForward();
+    if (this.prev)
+      this.neurons.forEach(v => v.setValues(this.prev!));
+    else
+      this.next?.computeForward();
   }
 
   computeBackward(diff: number[]) {
-    //if no prev then is's input layer
-    //and nothing should be done
     if (!this.prev) return;
 
-    //Change of values for prev layer
-    const totalPrevDiff = new Array(this.prev.size).fill(0);
+    const totalPrevChange = new Array(this.prev.size).fill(0);
 
-    //for each neuron computes its change and combined change for prev layer
     for (let i = 0; i < this.size; ++i) {
-      this.neurons[i].change(diff[i]);
-      this.neurons[i].getPrevDiff(diff[i]).forEach((v, i) => totalPrevDiff[i] += v);
+      this.neurons[i].getPrevChange(diff[i]).forEach((v, j) => (totalPrevChange[j] += v));
+      this.neurons[i].change(diff[i], this.prev.values);
     }
 
-    this.prev.computeBackward(totalPrevDiff);
+    this.prev.computeBackward(totalPrevChange);
   }
 
   removeNeuron(index: number) {
-    if (!this.neurons.length) throw new Error("There is 1 neuron, better remove whole layer");
+    if (this.size < 2)
+      throw new Error("There are 1 or 0 neurons, better remove whole layer");
+
     this.neurons.splice(index, 1);
 
-    if (this.next) for (const n of this.next.neurons) n.weights.splice(index, 1);
+    this.next?.neurons.forEach(n => n.weights.splice(index, 1));
   }
   addNeuron() {
     this.neurons.push(new Neuron(this.prev));
 
-    if (this.next) for (const n of this.next.neurons)
-      n.weights.push((2 * Math.random() - 1) * randomRange);
+    this.next?.neurons.forEach(n => n.weights.push((2 * Math.random() - 1) * randomRange));
   }
 }
 
@@ -196,8 +166,7 @@ class NNetwork {
   layers: Layer[] = [];
 
   constructor(...layout: number[]) {
-    //layout is set of sizes per specific layer
-    if(!layout) throw new Error("Empty layout");
+    if (!layout.length) throw new Error("Empty layout");
     this.layers.length = layout.length;
 
     this.layers[0] = new Layer(layout[0]);
@@ -207,19 +176,15 @@ class NNetwork {
     }
   }
 
-  set activation(f: (x: number) => number) {
-    for (const l of this.layers) l.activation = f;
+  set activation(func: (x: number) => number) {
+    this.layers.forEach(l => l.activation = func);
   }
-  set actDerivative(f: (x: number) => number) {
-    for (const l of this.layers) l.actDerivative = f;
-  }
-  set cost(f: (x: number, y: number) => number) {
-    for (const l of this.layers) l.cost = f;
+  set actDerivative(func: (x: number) => number) {
+    this.layers.forEach(l => l.actDerivative = func);
   }
   set step(val: number) {
-    for (const l of this.layers) l.step = val;
+    this.layers.forEach(l => l.step = val);
   }
-
   get layout() {
     return this.layers.map(v => v.size);
   }
@@ -236,11 +201,8 @@ class NNetwork {
     return copy;
   }
   static loadFrom(file: string): NNetwork {
-    //create NN based on file
     const loaded: NNetwork = new NNetwork(1);
     const neuronsData = fs.readFileSync(file, "utf8").split("\n");
-    //processing first iteration manually
-    //to recover first layer's size
 
     for (let neuronDataI = 0; neuronDataI < neuronsData.length; ++neuronDataI) {
       if (neuronsData[neuronDataI].length) {
@@ -253,7 +215,6 @@ class NNetwork {
 
         for (let i = 0; i < separatedValues.length; ++i)
           neuron.weights[i] = parseFloat(separatedValues[i]);
-
       } else {
         loaded.addLayer(loaded.layers.length, 1);
 
@@ -273,15 +234,13 @@ class NNetwork {
     return loaded;
   }
   saveTo(file: string) {
-    //load NN to a file
-    //\n\n delimits new layer
     let data = "";
 
     //input layer can be recovered from next to it layer
     const withoutInputLayer = Array.from(this.layers);
     withoutInputLayer.shift();
-    withoutInputLayer.shift()?.neurons
-      .forEach(v => data += "\n" + v.bias.toString() + " " + v.weights.toString().replace(/,/gi, " "));
+    withoutInputLayer.shift()?.neurons.
+      forEach(v => data += "\n" + v.bias.toString() + " " + v.weights.toString().replace(/,/gi, " "));
 
     for (const l of withoutInputLayer) {
       data += "\n";
@@ -296,25 +255,22 @@ class NNetwork {
     this.layers[0].values = input;
     this.layers[0].computeForward();
 
-    //copying so that references don't leak
     return this.layers[this.layers.length - 1].values;
   }
-  backprop(...output: number[]) {
-    //for backpropagation technique
+  backprop(...output: number[]): void {
     if (output.length !== this.layers[this.layers.length - 1].size)
-      throw "backprop: invalid input";
+      throw new Error("Invalid input size");
 
-    const diff = output.map(
+    const changes = output.map(
       (out, i) => out - this.layers[this.layers.length - 1].values[i]
     );
-    this.layers[this.layers.length - 1].computeBackward(diff);
+    this.layers[this.layers.length - 1].computeBackward(changes);
   }
 
   removeLayer(index: number) {
     this.layers.splice(index, 1);
 
-    if (this.layers[index])
-      this.layers[index].prev = this.layers[index - 1];
+    if (this.layers[index]) this.layers[index].prev = this.layers[index - 1];
     this.layers[index - 1].next = this.layers[index];
   }
   addLayer(index: number, size: number) {
@@ -322,15 +278,16 @@ class NNetwork {
 
     if (this.layers[index - 1])
       this.layers[index - 1].next = this.layers[index];
+
     this.layers[index].prev = this.layers[index - 1];
     this.layers[index].next = this.layers[index + 1];
+
     if (this.layers[index + 1])
       this.layers[index + 1].prev = this.layers[index];
   }
 
-  //train on input-output pairs
-  train(...examples: [number[], number[]][]) {
-    for(const example of examples) {
+  train(...examples: [number[], number[]][]): void {
+    for (const example of examples) {
       this.feedforward(...example[0]);
       this.backprop(...example[1]);
     }
