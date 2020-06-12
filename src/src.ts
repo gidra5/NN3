@@ -45,17 +45,17 @@ class Neuron {
     return copy;
   }
 
-  setValues(prevLayer: Layer) {
-    if (prevLayer.size !== this.weights.length)
+  setValues(prevValues: number[]): void {
+    if (prevValues.length !== this.weights.length)
       throw new Error("prevLayer's size isn't matching weights' length");
 
     this.sum = this.bias;
-    for (let i = 0; i < prevLayer.size; ++i)
-      this.sum += prevLayer.neurons[i].value * this.weights[i];
+    for (let i = 0; i < prevValues.length; ++i)
+      this.sum += prevValues[i] * this.weights[i];
     this.value = this.activation(this.sum);
   }
 
-  change(change: number, prevValues: number[]) {
+  change(change: number, prevValues: number[]): void {
     if (prevValues.length !== this.weights.length)
       throw new Error("prevLayer's size isn't matching weights' length");
 
@@ -127,14 +127,12 @@ class Layer {
     this.neurons.forEach(n => n.step = val);
   }
 
-  computeForward() {
-    if (this.prev)
-      this.neurons.forEach(v => v.setValues(this.prev!));
-    else
-      this.next?.computeForward();
+  computeForward(): void {
+    this.neurons.forEach(v => v.setValues(this.prev!.values));
+    this.next?.computeForward();
   }
 
-  computeBackward(diff: number[]) {
+  computeBackward(diff: number[]): void {
     if (!this.prev) return;
 
     const totalPrevChange = new Array(this.prev.size).fill(0);
@@ -147,7 +145,7 @@ class Layer {
     this.prev.computeBackward(totalPrevChange);
   }
 
-  removeNeuron(index: number) {
+  removeNeuron(index: number): void {
     if (this.size < 2)
       throw new Error("There are 1 or 0 neurons, better remove whole layer");
 
@@ -155,7 +153,7 @@ class Layer {
 
     this.next?.neurons.forEach(n => n.weights.splice(index, 1));
   }
-  addNeuron() {
+  addNeuron(): void {
     this.neurons.push(new Neuron(this.prev));
 
     this.next?.neurons.forEach(n => n.weights.push((2 * Math.random() - 1) * randomRange));
@@ -233,7 +231,7 @@ class NNetwork {
     }
     return loaded;
   }
-  saveTo(file: string) {
+  saveTo(file: string): void {
     let data = "";
 
     //input layer can be recovered from next to it layer
@@ -253,7 +251,7 @@ class NNetwork {
 
   feedforward(...input: number[]): number[] {
     this.layers[0].values = input;
-    this.layers[0].computeForward();
+    this.layers[1].computeForward();
 
     return this.layers[this.layers.length - 1].values;
   }
@@ -267,13 +265,13 @@ class NNetwork {
     this.layers[this.layers.length - 1].computeBackward(changes);
   }
 
-  removeLayer(index: number) {
+  removeLayer(index: number): void {
     this.layers.splice(index, 1);
 
     if (this.layers[index]) this.layers[index].prev = this.layers[index - 1];
     this.layers[index - 1].next = this.layers[index];
   }
-  addLayer(index: number, size: number) {
+  addLayer(index: number, size: number): void {
     this.layers.splice(index, 0, new Layer(size));
 
     if (this.layers[index - 1])

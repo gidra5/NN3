@@ -19,8 +19,11 @@ const startingB = Array.from(nn.layers[1].neurons.map(v => v.bias));
 
 //learning test
 let input = Math.random() * 1;
-nn.feedforward([input]);
-nn.backprop([testFunc(input)]);
+for (let i = 0; i < 100; ++i) {
+  input = Math.random() * 1;
+  nn.feedforward([input]);
+  nn.backprop([testFunc(input)]);
+}
 
 console.log(`testFunc: ${a} * x + ${b}`);
 console.log(`In: ${input}`);
